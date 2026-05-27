@@ -150,7 +150,18 @@ h1 span {
 .quote-card:nth-child(5n+5) { border-left-color: var(--neon-purple);--nc: var(--neon-purple); }
 
 .quote-card:hover:not(.read) { background: #16161f; }
-.quote-card.read { filter: grayscale(1) brightness(0.28); border-left-color: #2a2a2a !important; }
+.quote-card.read {
+  border-width: 1px 1px 1px 3px;
+}
+.quote-card.read .quote-text-inner {
+  filter: brightness(1.7) saturate(1.5);
+  text-shadow: 0 0 24px currentColor, 0 0 50px currentColor !important;
+  animation: neonPulse 2.2s ease-in-out infinite;
+}
+@keyframes neonPulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.7; }
+}
 
 @keyframes slideIn {
   from { opacity:0; transform:translateY(14px); }
@@ -184,7 +195,8 @@ h1 span {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.62rem;
   letter-spacing: 0.15em;
-  color: var(--text-dim);
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px rgba(255,230,0,0.7);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -392,7 +404,7 @@ function render() {
         <button class="btn-icon btn-delete" onclick="askDelete(${i})" title="삭제">✕</button>
       </div>
       <div class="card-body" onclick="toggleRead(${i})">
-        <p class="quote-text" style="color:${i % 2 === 0 ? 'var(--neon-pink)' : 'var(--neon-green)'}; text-shadow:0 0 18px ${i % 2 === 0 ? 'rgba(255,45,120,0.5)' : 'rgba(182,255,0,0.5)'};">${esc(q.text)}</p>
+        <p class="quote-text"><span class="quote-text-inner" style="color:${i % 2 === 0 ? 'var(--neon-pink)' : 'var(--neon-green)'}; text-shadow:0 0 18px ${i % 2 === 0 ? 'rgba(255,45,120,0.5)' : 'rgba(182,255,0,0.5)'};">${esc(q.text)}</span></p>
         <div class="quote-footer">
           <span class="quote-author">${q.author ? '— ' + esc(q.author) : ''}</span>
           <span class="read-tag">✓ 읽음</span>
@@ -422,6 +434,46 @@ function toggleRead(i) {
   save(data);
   render();
 }
+
+// 자정 초기화
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function checkMidnightReset() {
+  const lastDate = localStorage.getItem('quotes_last_date');
+  const today = getTodayStr();
+  if (lastDate !== today) {
+    // 날짜 바뀜 → read 상태 초기화
+    const data = load();
+    data.forEach(q => q.read = false);
+    save(data);
+    localStorage.setItem('quotes_last_date', today);
+    render();
+  }
+}
+
+// 앱 열릴 때 체크
+checkMidnightReset();
+
+// 탭이 다시 활성화될 때도 체크 (핸드폰에서 앱 복귀 시)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) checkMidnightReset();
+});
+
+// 자정에 정확히 초기화되도록 타이머 설정
+function scheduleNextMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const msUntilMidnight = midnight - now;
+  setTimeout(() => {
+    checkMidnightReset();
+    scheduleNextMidnight(); // 다음 자정 예약
+  }, msUntilMidnight);
+}
+scheduleNextMidnight();
 
 function toggleEditMode() {
   editMode = !editMode;
